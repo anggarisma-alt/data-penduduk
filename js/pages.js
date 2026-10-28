@@ -289,7 +289,7 @@ async function penHapus(id) {
 /* ============================================================
    KARTU KELUARGA — tampilan keluarga dikelompokkan dari No KK
    ============================================================ */
-const KkState = { q: '', dusun: '', page: 1, size: 20 };
+const KkState = { q: '', dusun: '', rw: '', rt: '', page: 1, size: 20 };
 function groupKK() {
   const m = {}; let tanpa = 0;
   PenState.all.forEach(p => { if (!p.no_kk) { tanpa++; return; } (m[p.no_kk] = m[p.no_kk] || []).push(p); });
@@ -306,11 +306,11 @@ Pages.kk = {
   title: 'Kartu Keluarga', min: 1,
   template: () => '<div class="page-h"><div><h2>Kartu Keluarga</h2><p>Keluarga dikelompokkan berdasarkan nomor KK.</p></div></div>' +
     '<div class="card flush"><div class="toolbar"><div class="search">' + ic('search') + '<input class="input" id="kQ" placeholder="Cari No KK, nama kepala keluarga, atau anggota…" aria-label="Cari keluarga"></div>' +
-    '<select class="select" id="kDusun" aria-label="Dusun"></select></div><div id="kBody"><div style="padding:18px">' + skeleton(6) + '</div></div></div>',
+    '<select class="select" id="kDusun" aria-label="Dusun"></select><select class="select" id="kRw" aria-label="RW"></select><select class="select" id="kRt" aria-label="RT"></select></div><div id="kBody"><div style="padding:18px">' + skeleton(6) + '</div></div></div>',
   init(el) {
     const re = () => { KkState.page = 1; this.draw(el); };
     $('#kQ', el).addEventListener('input', debounce(e => { KkState.q = e.target.value.trim().toLowerCase(); re(); }, 250));
-    $('#kDusun', el).addEventListener('change', e => { KkState.dusun = e.target.value; re(); });
+    [['kDusun', 'dusun'], ['kRw', 'rw'], ['kRt', 'rt']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { KkState[k] = e.target.value; re(); }));
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (b) { KkState.page += b.dataset.act === 'next' ? 1 : -1; return this.draw(el); }
       const tr = e.target.closest('tr.click'); if (tr) kkDetail(tr.dataset.no);
@@ -320,8 +320,9 @@ Pages.kk = {
   draw(el) {
     const { list, tanpa } = groupKK(), body = $('#kBody', el), s = KkState;
     const dusun = Array.from(new Set(list.map(k => k.kepala.dusun).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id'));
-    $('#kDusun', el).innerHTML = opts(dusun, s.dusun, 'Semua dusun');
-    const q = s.q, rows = list.filter(k => (!s.dusun || k.kepala.dusun === s.dusun) && (!q || k.no.includes(q) || k.anggota.some(a => a.nama.toLowerCase().includes(q) || a.nik.includes(q))));
+    const uq = k => Array.from(new Set(list.map(x => x.kepala[k]).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+    $('#kDusun', el).innerHTML = opts(dusun, s.dusun, 'Semua dusun'); $('#kRw', el).innerHTML = opts(uq('rw'), s.rw, 'Semua RW'); $('#kRt', el).innerHTML = opts(uq('rt'), s.rt, 'Semua RT');
+    const q = s.q, rows = list.filter(k => (!s.dusun || k.kepala.dusun === s.dusun) && (!s.rw || k.kepala.rw === s.rw) && (!s.rt || k.kepala.rt === s.rt) && (!q || k.no.includes(q) || k.anggota.some(a => a.nama.toLowerCase().includes(q) || a.nik.includes(q))));
     const pages = Math.max(1, Math.ceil(rows.length / s.size)); s.page = Math.min(Math.max(1, s.page), pages);
     const note = tanpa ? '<div class="pager" style="border-bottom:1px solid var(--line)"><span>' + ic('alert') + ' ' + nf(tanpa) + ' penduduk belum memiliki No KK dan tidak tampil di sini.</span></div>' : '';
     if (!list.length) { body.innerHTML = note + emptyState('home', 'Belum ada data keluarga', 'Isi kolom No KK pada data penduduk agar keluarga terbentuk.'); return; }
