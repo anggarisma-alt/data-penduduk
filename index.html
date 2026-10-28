@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f7de1">
+  <title>Data Penduduk — Desa Lamongan</title>
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232f7de1'/%3E%3Cpath d='M16 7 25 12H7zM9 14v7M14 14v7M18 14v7M23 14v7M7 24h18' stroke='white' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <div id="splash" class="splash" aria-live="polite"><div class="spin"></div><span>Memuat aplikasi…</span></div>
+
+  <!-- MASUK -->
+  <section id="login" class="auth" hidden>
+    <div class="auth-art">
+      <div class="art-orb o1"></div><div class="art-orb o2"></div>
+      <div class="art-in">
+        <div class="logo-mark"><span data-ic="landmark"></span></div>
+        <h1>Data<br>Penduduk</h1>
+        <p>Induk penduduk dan surat keterangan desa dalam satu tempat — rapi, cepat, siap cetak.</p>
+        <ul class="art-list">
+          <li><span data-ic="users"></span>Data penduduk tertata dan mudah dicari</li>
+          <li><span data-ic="file"></span>Surat terisi otomatis dari data penduduk</li>
+          <li><span data-ic="history"></span>Setiap surat tercatat dalam riwayat</li>
+        </ul>
+        <small>Desa Lamongan · Kec. Kaligondang · Kab. Purbalingga</small>
+      </div>
+    </div>
+    <div class="auth-pane">
+      <form id="loginForm" class="auth-card" autocomplete="on" novalidate>
+        <div class="logo-mark sm"><span data-ic="landmark"></span></div>
+        <h2>Selamat datang</h2>
+        <p class="sub">Masuk dengan akun perangkat desa.</p>
+        <div class="field"><label for="lUser">Username</label>
+          <input class="input" id="lUser" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+        <div class="field"><label for="lPass">Password</label>
+          <div class="pw"><input class="input" id="lPass" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" class="icon-btn" id="lEye" aria-label="Tampilkan password"><span data-ic="eye"></span></button></div></div>
+        <div id="lErr" class="form-err" role="alert" hidden></div>
+        <button class="btn btn-primary btn-block" id="lBtn" type="submit">Masuk</button>
+        <p class="foot">Lupa password? Hubungi admin desa.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- APLIKASI -->
+  <div id="shell" class="shell" hidden>
+    <div class="scrim" id="scrim"></div>
+    <aside class="sidebar" id="sidebar" aria-label="Menu utama">
+      <div class="brand"><div class="logo-mark sm"><span data-ic="landmark"></span></div>
+        <div><b>Data Penduduk</b><small>Desa Lamongan</small></div></div>
+      <nav class="nav" id="nav"></nav>
+      <div class="side-user">
+        <div class="avatar" id="suAv">A</div>
+        <div class="su-t"><b id="suName">—</b><small id="suRole">—</small></div>
+        <button class="icon-btn" id="btnLogout" aria-label="Keluar" title="Keluar"><span data-ic="logout"></span></button>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn only-mobile" id="btnMenu" aria-label="Buka menu"><span data-ic="menu"></span></button>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="grow"></div>
+        <span class="net" id="netState" hidden>Menyegarkan…</span>
+        <button class="btn btn-ghost btn-sm" id="btnAkun"><span data-ic="key"></span><span class="hide-sm">Akun saya</span></button>
+      </header>
+      <main id="view" class="view" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="modal-root"></div>
+
+  <script src="js/config.js" defer></script>
+  <script src="js/core.js" defer></script>
+  <script src="js/xlsx.js" defer></script>
+  <script src="js/pages.js" defer></script>
+</body>
+</html>
