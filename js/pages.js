@@ -293,10 +293,25 @@ async function penHapus(id) {
    KARTU KELUARGA — tampilan keluarga dikelompokkan dari No KK
    ============================================================ */
 const KkState = { q: '', dusun: '', rw: '', rt: '', page: 1, size: 20 };
+/** Urutan hubungan dalam keluarga: kepala → suami/istri → anak → menantu → cucu → orang tua → mertua → famili → lainnya.
+ *  Longgar terhadap huruf besar/kecil dan variasi tulisan ("ISTRI", "Anak Kandung", "Kepala Keluarga"). */
+function hubRank(h) {
+  h = String(h || '').toLowerCase().trim();
+  if (!h) return 99;
+  if (/kepala/.test(h)) return 0;
+  if (/suami|istri|isteri/.test(h)) return 1;
+  if (/^anak|anak\s/.test(h)) return 2;
+  if (/menantu/.test(h)) return 3;
+  if (/cucu/.test(h)) return 4;
+  if (/mertua/.test(h)) return 6;
+  if (/orang\s*tua|ayah|bapak|ibu/.test(h)) return 5;
+  if (/famili/.test(h)) return 7;
+  return 8;
+}
 function groupKK() {
   const m = {}; let tanpa = 0;
   PenState.all.forEach(p => { if (!p.no_kk) { tanpa++; return; } (m[p.no_kk] = m[p.no_kk] || []).push(p); });
-  const rank = p => { const i = OPT.hubungan_keluarga.indexOf(p.hubungan_keluarga); return i < 0 ? 99 : i; };
+  const rank = p => hubRank(p.hubungan_keluarga);
   const list = Object.keys(m).map(no => {
     const a = m[no].slice().sort((x, y) => rank(x) - rank(y) || String(x.tgl_lahir).localeCompare(String(y.tgl_lahir)));
     const kepala = a.find(x => /kepala/i.test(x.hubungan_keluarga)) || a[0];
@@ -689,7 +704,7 @@ const EkspState = { dusun: '', rw: '', rt: '', status: 'Hidup', urut: 'kk', page
 const URUT_LABEL = { kk: 'No KK (dikelompokkan per keluarga)', nik: 'NIK', nama: 'nama', wilayah: 'dusun, RW, RT, lalu nama' };
 function eksporRows() {
   const s = EkspState, num = v => Number(v) || 0;
-  const rank = p => { const i = OPT.hubungan_keluarga.indexOf(p.hubungan_keluarga); return i < 0 ? 99 : i; };
+  const rank = p => hubRank(p.hubungan_keluarga);
   const cmp = {
     kk: (a, b) => (a.no_kk ? 0 : 1) - (b.no_kk ? 0 : 1) || (a.no_kk || '').localeCompare(b.no_kk || '', 'id', { numeric: true }) || rank(a) - rank(b) || String(normIso(a.tgl_lahir)).localeCompare(String(normIso(b.tgl_lahir))) || a.nama.localeCompare(b.nama, 'id'),
     nik: (a, b) => a.nik.localeCompare(b.nik, 'id', { numeric: true }),
