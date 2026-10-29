@@ -13,6 +13,7 @@ const NAV = [
   { id: 'surat', label: 'Buat Surat', icon: 'file', min: 1 },
   { id: 'riwayat', label: 'Riwayat Surat', icon: 'history', min: 1 },
   { id: 'pemilih', label: 'Daftar Pemilih', icon: 'vote', min: 1 },
+  { id: 'ekspor', label: 'Ekspor Data', icon: 'download', min: 1 },
   { id: 'pengaturan', label: 'Pengaturan', icon: 'sliders', min: 2 }
 ];
 const OPT = {
@@ -166,7 +167,7 @@ function stat(icon, cls, val, label) { return '<div class="stat"><div class="si 
 /* ============================================================
    DATA PENDUDUK
    ============================================================ */
-const PenState = { all: [], loaded: false, q: '', dusun: '', rw: '', rt: '', status: '', page: 1, size: 25 };
+const PenState = { all: [], loaded: false, q: '', dusun: '', rw: '', rt: '', status: '', kk: '', page: 1, size: 25 };
 function unpackPen(p) { return p.rows.map(r => { const o = {}; p.cols.forEach((c, i) => { o[c] = r[i]; }); return o; }); }
 function packPen() {
   const cols = ['id', 'nik', 'no_kk', 'nama', 'tempat_lahir', 'tgl_lahir', 'jk', 'gol_darah', 'agama', 'status_kawin', 'hubungan_keluarga', 'pendidikan', 'pekerjaan', 'alamat', 'dusun', 'rw', 'rt', 'nama_ayah', 'nama_ibu', 'kewarganegaraan', 'no_hp', 'status_dasar', 'created_at', 'updated_at'];
@@ -183,12 +184,12 @@ Pages.penduduk = {
   template: () => '<div class="page-h"><div><h2>Data Penduduk</h2><p>Buku induk penduduk Desa Lamongan.</p></div><div class="chips"><button class="btn btn-primary" id="pAdd">' + ic('plus') + ' Tambah penduduk</button></div></div>' +
     '<div class="card flush"><div class="toolbar"><div class="search">' + ic('search') + '<input class="input" id="pQ" placeholder="Cari NIK, nama, atau No KK…" aria-label="Cari penduduk"></div>' +
     '<select class="select" id="pDusun" aria-label="Dusun"></select><select class="select" id="pRw" aria-label="RW"></select><select class="select" id="pRt" aria-label="RT"></select>' +
-    '<select class="select" id="pSt" aria-label="Status"><option value="">Semua status</option><option>Hidup</option><option>Meninggal</option><option>Pindah</option></select></div>' +
+    '<select class="select" id="pSt" aria-label="Status"><option value="">Semua status</option><option>Hidup</option><option>Meninggal</option><option>Pindah</option></select><select class="select" id="pKk" aria-label="No KK"></select></div>' +
     '<div id="pBody">' + '<div style="padding:18px">' + skeleton(6) + '</div></div></div>',
   init(el) {
     const re = () => { PenState.page = 1; this.draw(el); };
     $('#pQ', el).addEventListener('input', debounce(e => { PenState.q = e.target.value.trim().toLowerCase(); re(); }, 250));
-    [['pDusun', 'dusun'], ['pRw', 'rw'], ['pRt', 'rt'], ['pSt', 'status']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { PenState[k] = e.target.value; re(); }));
+    [['pDusun', 'dusun'], ['pRw', 'rw'], ['pRt', 'rt'], ['pSt', 'status'], ['pKk', 'kk']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { PenState[k] = e.target.value; re(); }));
     $('#pAdd', el).addEventListener('click', () => penForm());
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (b) { const id = b.dataset.id; ({ view: () => penDetail(id), edit: () => penForm(id), del: () => penHapus(id), prev: () => { PenState.page--; this.draw(el); }, next: () => { PenState.page++; this.draw(el); } })[b.dataset.act](); return; }
@@ -201,11 +202,13 @@ Pages.penduduk = {
     const set = (id, arr, ph, sel) => { const s = $('#' + id, el); s.innerHTML = opts(arr, sel, ph); };
     set('pDusun', uniq('dusun'), 'Semua dusun', PenState.dusun); set('pRw', uniq('rw'), 'Semua RW', PenState.rw); set('pRt', uniq('rt'), 'Semua RT', PenState.rt);
     $('#pSt', el).value = PenState.status;
+    const tanpa = PenState.all.filter(p => !p.no_kk).length;
+    $('#pKk', el).innerHTML = '<option value="">Semua No KK</option><option value="belum">Belum punya No KK (' + nf(tanpa) + ')</option><option value="sudah">Sudah punya No KK</option>'; $('#pKk', el).value = PenState.kk;
   },
   filtered() {
     const s = PenState, q = s.q;
     return s.all.filter(p => (!q || p.nik.includes(q) || (p.no_kk || '').includes(q) || p.nama.toLowerCase().includes(q)) &&
-      (!s.dusun || p.dusun === s.dusun) && (!s.rw || p.rw === s.rw) && (!s.rt || p.rt === s.rt) && (!s.status || p.status_dasar === s.status));
+      (!s.dusun || p.dusun === s.dusun) && (!s.rw || p.rw === s.rw) && (!s.rt || p.rt === s.rt) && (!s.status || p.status_dasar === s.status) && (!s.kk || (s.kk === 'belum' ? !p.no_kk : !!p.no_kk)));
   },
   draw(el) {
     this.fill(el);
@@ -356,7 +359,7 @@ function kkDetail(no) {
    ============================================================ */
 const MtsState = { all: [], jenis: '', page: 1, size: 20 };
 const ALASAN = ['Pekerjaan', 'Pendidikan', 'Keamanan', 'Kesehatan', 'Perumahan', 'Keluarga', 'Perkawinan', 'Lainnya'];
-function refreshPenViews() { ['penduduk', 'kk', 'pemilih'].forEach(k => { const el = $('.page[data-page="' + k + '"]'); if (el && Pages[k].ready) Pages[k].draw(el); }); }
+function refreshPenViews() { ['penduduk', 'kk', 'pemilih', 'ekspor'].forEach(k => { const el = $('.page[data-page="' + k + '"]'); if (el && Pages[k].ready) Pages[k].draw(el); }); }
 function afterMutasi(d) {
   Store.del(userKey('mts')); Store.del(userKey('rwy')); Store.del(userKey('dash'));
   const el = $('.page[data-page="mutasi"]'); if (el && Pages.mutasi.ready) Pages.mutasi.show(el);
@@ -676,6 +679,98 @@ Pages.pemilih = {
       rows.slice((s.page - 1) * s.size, s.page * s.size).map((p, n) => '<tr><td>' + ((s.page - 1) * s.size + n + 1) + '</td><td class="mono">' + esc(p.nik) + '</td><td class="cell-main"><b>' + esc(p.nama) + '</b></td><td>' + (p.jk === 'Laki-laki' ? 'L' : p.jk === 'Perempuan' ? 'P' : '-') + '</td>' +
         '<td class="hide-md">' + esc((p.tempat_lahir ? p.tempat_lahir + ', ' : '') + tglID(p.tgl_lahir)) + '</td><td>' + umurPada(p.tgl_lahir, s.tgl) + ' th</td><td class="hide-sm">' + esc(p.dusun || '-') + ' · ' + esc(p.rt || '-') + '/' + esc(p.rw || '-') + '</td></tr>').join('') + '</tbody></table></div>' +
       '<div class="pager"><span>' + nf((s.page - 1) * s.size + 1) + '–' + nf(Math.min(s.page * s.size, rows.length)) + ' dari ' + nf(rows.length) + ' pemilih</span><div><button class="btn btn-ghost btn-sm" data-act="prev"' + (s.page <= 1 ? ' disabled' : '') + '>' + ic('chevL') + ' Sebelumnya</button><button class="btn btn-ghost btn-sm" data-act="next"' + (s.page >= pages ? ' disabled' : '') + '>Berikutnya ' + ic('chevR') + '</button></div></div>';
+  }
+};
+
+/* ============================================================
+   EKSPOR DATA PENDUDUK — Excel & PDF · urut NIK · filter dusun/RW/RT/status
+   ============================================================ */
+const EkspState = { dusun: '', rw: '', rt: '', status: 'Hidup', urut: 'kk', page: 1, size: 25 };
+const URUT_LABEL = { kk: 'No KK (dikelompokkan per keluarga)', nik: 'NIK', nama: 'nama', wilayah: 'dusun, RW, RT, lalu nama' };
+function eksporRows() {
+  const s = EkspState, num = v => Number(v) || 0;
+  const rank = p => { const i = OPT.hubungan_keluarga.indexOf(p.hubungan_keluarga); return i < 0 ? 99 : i; };
+  const cmp = {
+    kk: (a, b) => (a.no_kk ? 0 : 1) - (b.no_kk ? 0 : 1) || (a.no_kk || '').localeCompare(b.no_kk || '', 'id', { numeric: true }) || rank(a) - rank(b) || String(normIso(a.tgl_lahir)).localeCompare(String(normIso(b.tgl_lahir))) || a.nama.localeCompare(b.nama, 'id'),
+    nik: (a, b) => a.nik.localeCompare(b.nik, 'id', { numeric: true }),
+    nama: (a, b) => a.nama.localeCompare(b.nama, 'id'),
+    wilayah: (a, b) => (a.dusun || '').localeCompare(b.dusun || '', 'id') || num(a.rw) - num(b.rw) || num(a.rt) - num(b.rt) || a.nama.localeCompare(b.nama, 'id')
+  }[s.urut];
+  return PenState.all.filter(p => (!s.dusun || p.dusun === s.dusun) && (!s.rw || p.rw === s.rw) && (!s.rt || p.rt === s.rt) && (!s.status || p.status_dasar === s.status)).sort(cmp);
+}
+function eksporInfo(rows) {
+  const st = (AppState.boot && AppState.boot.pengaturan) || {}, s = EkspState;
+  return { st, filter: [s.dusun && 'Dusun ' + s.dusun, s.rw && 'RW ' + s.rw, s.rt && 'RT ' + s.rt, s.status ? 'Status ' + s.status : 'Semua status'].filter(Boolean).join(' · '),
+    l: rows.filter(p => p.jk === 'Laki-laki').length, p: rows.filter(p => p.jk === 'Perempuan').length };
+}
+function kkMeta(rows) {
+  const m = {};
+  rows.forEach(p => { const k = p.no_kk || '', g = m[k] || (m[k] = { n: 0, kepala: null }); g.n++; if (!g.kepala && /kepala/i.test(p.hubungan_keluarga || '')) g.kepala = p; });
+  Object.keys(m).forEach(k => { if (!m[k].kepala) m[k].kepala = rows.find(p => (p.no_kk || '') === k); });
+  return m;
+}
+function grpMaker(rows, colspan) {                       // baris judul per keluarga (hanya bila urut No KK)
+  if (EkspState.urut !== 'kk') return () => '';
+  const meta = kkMeta(rows); let prev = null;
+  return p => { const k = p.no_kk || ''; if (k === prev) return ''; prev = k; const g = meta[k];
+    return '<tr class="grp"><td colspan="' + colspan + '">' + (k ? 'No KK ' + esc(k) + ' · Kepala keluarga: ' + esc(g.kepala.nama) : 'Belum memiliki No KK') + ' · ' + g.n + ' orang</td></tr>'; };
+}
+const jkS = p => p.jk === 'Laki-laki' ? 'L' : p.jk === 'Perempuan' ? 'P' : '';
+function eksporExcel(rows) {
+  const i = eksporInfo(rows), st = i.st, hari = hariIni();
+  const H = ['No', 'NIK', 'No KK', 'Nama Lengkap', 'L/P', 'Tempat Lahir', 'Tanggal Lahir', 'Umur', 'Gol. Darah', 'Agama', 'Status Kawin', 'Hubungan Keluarga', 'Pendidikan', 'Pekerjaan', 'Alamat', 'Dusun', 'RT', 'RW', 'Nama Ayah', 'Nama Ibu', 'Kewarganegaraan', 'No HP', 'Status'];
+  const L = (v, s) => ({ v, s: s || 0 });
+  const data = [[L('DATA PENDUDUK', 2)], [L('Desa ' + (st.nama_desa || '') + ', Kecamatan ' + (st.kecamatan || '') + ', Kabupaten ' + (st.kabupaten || ''), 4)],
+    [L('Per ' + tglID(hari) + ' · ' + i.filter + ' · diurutkan berdasarkan ' + URUT_LABEL[EkspState.urut])],
+    [L('Jumlah: ' + nf(rows.length) + ' orang (laki-laki ' + nf(i.l) + ', perempuan ' + nf(i.p) + ')')], [], H.map(h => L(h, 1))]
+    .concat(rows.map((p, n) => [n + 1, p.nik, p.no_kk, p.nama, jkS(p), p.tempat_lahir, normIso(p.tgl_lahir).split('-').reverse().join('-'), umurPada(p.tgl_lahir, hari), p.gol_darah, p.agama, p.status_kawin, p.hubungan_keluarga,
+      p.pendidikan, p.pekerjaan, p.alamat, p.dusun, p.rt, p.rw, p.nama_ayah, p.nama_ibu, p.kewarganegaraan, p.no_hp, p.status_dasar].map(v => L(typeof v === 'number' ? v : (v || ''), 3))));
+  return XLSX_MINI.make({ sheet: 'Data Penduduk', rows: data, freeze: 6, merges: ['A1:W1', 'A2:W2', 'A3:W3', 'A4:W4'],
+    widths: [6, 20, 20, 30, 6, 18, 14, 7, 10, 12, 16, 18, 22, 20, 34, 16, 6, 6, 24, 24, 14, 16, 12] });
+}
+function eksporHtml(rows) {
+  const i = eksporInfo(rows), st = i.st, grp = grpMaker(rows, 10);
+  const css = '@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt;color:#000;margin:0 auto;padding:8mm 10mm}@media print{body{padding:0}}' +
+    '.kop{text-align:center;margin-bottom:6px}.kop div{text-transform:uppercase;line-height:1.35}.k1{font-weight:bold;font-size:11pt}h1{font-size:14pt;text-align:center;margin:6px 0 2px;text-decoration:underline}.sub{text-align:center;margin:0 0 8px}' +
+    'table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:2px 4px;vertical-align:top}th{background:#e8f0fa;text-align:center}thead{display:table-header-group}tr{page-break-inside:avoid}.c{text-align:center}' +
+    '.grp td{background:#f1f5fb;font-weight:bold}.ttd{margin-top:20px;margin-left:68%;text-align:center;page-break-inside:avoid}.ttd .sp{height:58px}';
+  return '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Data Penduduk</title><style>' + css + '</style></head><body><div class="kop"><div class="k1">Pemerintah Kabupaten ' + esc(st.kabupaten) + '</div><div class="k1">Kecamatan ' + esc(st.kecamatan) + '</div><div class="k1">Pemerintah Desa ' + esc(st.nama_desa) + '</div></div>' +
+    '<h1>DATA PENDUDUK</h1><p class="sub">Per ' + esc(tglID(hariIni())) + ' · ' + esc(i.filter) + ' · diurutkan berdasarkan ' + esc(URUT_LABEL[EkspState.urut]) + '<br>Jumlah ' + nf(rows.length) + ' orang (laki-laki ' + nf(i.l) + ', perempuan ' + nf(i.p) + ')</p>' +
+    '<table><thead><tr><th>No</th><th>NIK</th><th>No KK</th><th>Nama Lengkap</th><th>L/P</th><th>Tempat, Tgl. Lahir</th><th>Status Kawin</th><th>Pekerjaan</th><th>Alamat</th><th>Status</th></tr></thead><tbody>' +
+    rows.map((p, n) => grp(p) + '<tr><td class="c">' + (n + 1) + '</td><td>' + esc(p.nik) + '</td><td>' + esc(p.no_kk || '-') + '</td><td>' + esc(p.nama) + '</td><td class="c">' + jkS(p) + '</td><td>' + esc((p.tempat_lahir ? p.tempat_lahir + ', ' : '') + tglID(p.tgl_lahir)) + '</td><td>' + esc(p.status_kawin || '-') + '</td><td>' + esc(p.pekerjaan || '-') + '</td>' +
+      '<td>' + esc([p.alamat, p.dusun && 'Dusun ' + p.dusun, (p.rt || p.rw) && 'RT ' + (p.rt || '-') + '/RW ' + (p.rw || '-')].filter(Boolean).join(', ')) + '</td><td class="c">' + esc(p.status_dasar) + '</td></tr>').join('') +
+    '</tbody></table><div class="ttd"><div>' + esc(st.nama_desa) + ', ' + esc(tglID(hariIni())) + '</div><div>' + esc(st.jabatan_penandatangan) + '</div><div class="sp"></div><b><u>' + esc(st.nama_penandatangan) + '</u></b></div></body></html>';
+}
+
+Pages.ekspor = {
+  title: 'Ekspor Data', min: 1,
+  template: () => '<div class="page-h"><div><h2>Ekspor Data Penduduk</h2><p>Unduh data penduduk sebagai Excel atau PDF sesuai filter.</p></div><div class="chips"><button class="btn btn-soft" id="ekXls">' + ic('download') + ' Unduh Excel</button><button class="btn btn-primary" id="ekPdf">' + ic('printer') + ' PDF / Cetak</button></div></div>' +
+    '<div class="card" style="margin-bottom:16px"><div class="filters"><div class="field"><label for="ekDusun">Dusun</label><select class="select" id="ekDusun"></select></div><div class="field"><label for="ekRw">RW</label><select class="select" id="ekRw"></select></div><div class="field"><label for="ekRt">RT</label><select class="select" id="ekRt"></select></div>' +
+    '<div class="field"><label for="ekSt">Status</label><select class="select" id="ekSt"><option value="">Semua status</option><option>Hidup</option><option>Meninggal</option><option>Pindah</option></select></div>' +
+    '<div class="field"><label for="ekUrut">Urutkan berdasarkan</label><select class="select" id="ekUrut"><option value="kk">No KK (per keluarga)</option><option value="nik">NIK</option><option value="nama">Nama</option><option value="wilayah">Dusun, RW, RT</option></select></div></div></div>' +
+    '<div class="stats" id="ekStats"></div><div class="card flush"><div id="ekBody"><div style="padding:18px">' + skeleton(5) + '</div></div></div>',
+  init(el) {
+    const re = () => { EkspState.page = 1; this.draw(el); };
+    [['ekDusun', 'dusun'], ['ekRw', 'rw'], ['ekRt', 'rt'], ['ekSt', 'status'], ['ekUrut', 'urut']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { EkspState[k] = e.target.value; re(); }));
+    $('#ekXls', el).addEventListener('click', () => { const r = eksporRows(); if (!r.length) return toast('Tidak ada data untuk diunduh.', 'err'); downloadBlob(eksporExcel(r), 'Data-Penduduk-' + hariIni() + '.xlsx'); toast(nf(r.length) + ' penduduk diunduh ke Excel.'); });
+    $('#ekPdf', el).addEventListener('click', () => { const r = eksporRows(); if (!r.length) return toast('Tidak ada data untuk dicetak.', 'err'); printModal('Data Penduduk', eksporHtml(r)); });
+    el.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) { EkspState.page += b.dataset.act === 'next' ? 1 : -1; this.draw(el); } });
+  },
+  show(el) { loadPen(); if (PenState.loaded) this.draw(el); },
+  draw(el) {
+    const s = EkspState, uniq = k => Array.from(new Set(PenState.all.map(p => p[k]).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+    $('#ekDusun', el).innerHTML = opts(uniq('dusun'), s.dusun, 'Semua dusun'); $('#ekRw', el).innerHTML = opts(uniq('rw'), s.rw, 'Semua RW'); $('#ekRt', el).innerHTML = opts(uniq('rt'), s.rt, 'Semua RT');
+    $('#ekSt', el).value = s.status; $('#ekUrut', el).value = s.urut;
+    const rows = eksporRows(), i = eksporInfo(rows), body = $('#ekBody', el);
+    $('#ekStats', el).innerHTML = stat('users', '', nf(rows.length), 'Jumlah penduduk') + stat('users', 'g', nf(i.l), 'Laki-laki') + stat('users', 'p', nf(i.p), 'Perempuan');
+    const pages = Math.max(1, Math.ceil(rows.length / s.size)); s.page = Math.min(Math.max(1, s.page), pages);
+    if (!PenState.all.length) { body.innerHTML = emptyState('users', 'Belum ada data penduduk', 'Tambahkan data penduduk lebih dulu.'); return; }
+    if (!rows.length) { body.innerHTML = emptyState('search', 'Tidak ada data', 'Tidak ada penduduk yang cocok dengan filter ini.'); return; }
+    const grp = grpMaker(rows, 7);
+    body.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No</th><th>NIK</th><th>Nama</th><th>L/P</th><th class="hide-md">No KK</th><th class="hide-sm">Dusun · RT/RW</th><th>Status</th></tr></thead><tbody>' +
+      rows.slice((s.page - 1) * s.size, s.page * s.size).map((p, n) => grp(p) + '<tr><td>' + ((s.page - 1) * s.size + n + 1) + '</td><td class="mono">' + esc(p.nik) + '</td><td class="cell-main"><b>' + esc(p.nama) + '</b></td><td>' + (jkS(p) || '-') + '</td><td class="mono hide-md">' + esc(p.no_kk || '-') + '</td>' +
+        '<td class="hide-sm">' + esc(p.dusun || '-') + ' · ' + esc(p.rt || '-') + '/' + esc(p.rw || '-') + '</td><td><span class="badge ' + (p.status_dasar === 'Hidup' ? 'b-ok' : p.status_dasar === 'Meninggal' ? 'b-bad' : 'b-warn') + '">' + esc(p.status_dasar) + '</span></td></tr>').join('') + '</tbody></table></div>' +
+      '<div class="pager"><span>' + nf((s.page - 1) * s.size + 1) + '–' + nf(Math.min(s.page * s.size, rows.length)) + ' dari ' + nf(rows.length) + ' penduduk</span><div><button class="btn btn-ghost btn-sm" data-act="prev"' + (s.page <= 1 ? ' disabled' : '') + '>' + ic('chevL') + ' Sebelumnya</button><button class="btn btn-ghost btn-sm" data-act="next"' + (s.page >= pages ? ' disabled' : '') + '>Berikutnya ' + ic('chevR') + '</button></div></div>';
   }
 };
 
