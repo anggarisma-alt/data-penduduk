@@ -109,11 +109,11 @@ async function api(action, data, opt) {
   if (!CFG.GAS_URL || /GANTI_DENGAN/.test(CFG.GAS_URL)) return { success: false, message: 'GAS_URL belum diisi di js/config.js.' };
   const isRead = READ_ACTIONS.test(action);
   const reqId = isRead ? '' : (opt.reqId || uid());
-  const tries = isRead ? 3 : 2;
+  const tries = opt.once ? 1 : (isRead ? 3 : 2);
   let res;
   for (let i = 0; i < tries; i++) {
     if (i) { await new Promise(r => setTimeout(r, 1200 * i)); if (navigator.onLine === false) await waitOnline(15000); }
-    res = await apiOnce(action, data, isRead ? (i ? 40000 : 25000) : 60000, reqId);
+    res = await apiOnce(action, data, opt.timeout || (isRead ? (i ? 40000 : 25000) : 60000), reqId);
     if (res.success || !res.retryable) break;
   }
   if (!res.success && res.data && res.data.code === 'AUTH' && typeof onSessionExpired === 'function') onSessionExpired();

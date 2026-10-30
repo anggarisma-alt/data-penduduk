@@ -1002,7 +1002,16 @@ Pages.pengaturan = {
   /* --- sistem (super user) --- */
   vSistem(el) {
     $('#gBody', el).innerHTML = '<div class="card" style="max-width:640px"><h3>Pemeliharaan</h3><p class="muted" style="margin-bottom:10px"><b>Rapikan data penduduk</b> memperbaiki data hasil tempel manual ke Sheet: ID kosong, tanggal dd/mm/yyyy, NIK/No KK bertanda baca, jenis kelamin L/P, status kosong.</p><p class="muted" style="margin-bottom:16px">Segarkan cache server bila data di Google Sheets diubah langsung (tanpa lewat aplikasi). Disarankan juga membuat salinan Spreadsheet secara berkala (File → Buat salinan).</p>' +
+      '<div style="margin:0 0 18px;padding:14px 16px;border-radius:12px;background:var(--b50);border:1px solid var(--b100)"><b>Keamanan NIK &amp; No KK</b><p class="muted" style="margin:4px 0 12px">NIK dan No KK di Spreadsheet disimpan <b>terenkripsi</b> (tampak teks acak). Data baru otomatis terenkripsi. Tombol ini mengamankan data lama yang masih teks biasa (penduduk, riwayat surat, mutasi). Aman dijalankan berulang.</p><button class="btn btn-primary" id="sAman">' + ic('key') + ' Amankan NIK &amp; No KK di Spreadsheet</button></div>' +
       '<button class="btn btn-primary" id="sRapi">' + ic('check') + ' Rapikan data penduduk</button> <button class="btn btn-soft" id="sCache">' + ic('refresh') + ' Segarkan cache server</button> <button class="btn btn-ghost" id="sPerf">Lihat catatan kecepatan (console)</button></div>';
+    $('#sAman', el).addEventListener('click', async () => {
+      if (!await confirmBox({ title: 'Amankan NIK & No KK', okText: 'Amankan sekarang', message: 'NIK dan No KK di Spreadsheet akan diubah menjadi teks terenkripsi. <b>Sebelum lanjut:</b> (1) buat salinan Spreadsheet, dan (2) di Apps Script jalankan fungsi <b>tampilkanKunciEnkripsi</b> lalu simpan kuncinya di tempat aman. Tanpa kunci, data terenkripsi tidak dapat dipulihkan. Lanjutkan?' })) return;
+      await busy($('#sAman', el), 'Mengamankan… (bisa beberapa menit)', async () => {
+        const r = await api('amankanData', {}, { timeout: 330000, once: true });
+        if (!r.success) return toast(r.message, 'err');
+        const d = r.data; Store.clearUser(); toast('Selesai: ' + d.penduduk + ' penduduk, ' + d.riwayat + ' riwayat, ' + d.mutasi + ' mutasi diamankan.' + (d.sisa ? ' Masih ada ' + d.sisa + ' riwayat — klik lagi.' : ''));
+      });
+    });
     $('#sRapi', el).addEventListener('click', async e => {
       if (!await confirmBox({ title: 'Rapikan data penduduk', okText: 'Rapikan sekarang', message: 'Data di sheet Penduduk akan distandarkan (ID, tanggal, NIK/No KK, jenis kelamin, status). Disarankan membuat salinan Spreadsheet lebih dulu. Lanjutkan?' })) return;
       const btn = $('#sRapi', el);
