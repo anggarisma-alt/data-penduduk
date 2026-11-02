@@ -175,7 +175,7 @@ function packPen() {
 }
 function persistPen() { const d = packPen(); Store.set(userKey('pen'), { t: Date.now(), h: hashStr(JSON.stringify(d)), data: d }); Store.del(userKey('dash')); }
 function loadPen(force) {
-  return swr('pen', 'pendudukList', {}, d => { PenState.all = unpackPen(d); PenState.loaded = true; refreshPenViews(); }, { force, fresh: 120000, onError: r => { const el = $('.page[data-page="penduduk"]'); if (el) $('#pBody', el).innerHTML = errorState(r, 'pRetry'); const b = $('#pRetry'); b && b.addEventListener('click', () => loadPen(true)); } });
+  return swr('pen', 'pendudukList', {}, d => { PenState.all = unpackPen(d); PenState.loaded = true; AppState.noRumahOk = d.cols.indexOf('no_rumah') >= 0; refreshPenViews(); }, { force, fresh: 120000, onError: r => { const el = $('.page[data-page="penduduk"]'); if (el) $('#pBody', el).innerHTML = errorState(r, 'pRetry'); const b = $('#pRetry'); b && b.addEventListener('click', () => loadPen(true)); } });
 }
 async function ensurePen() { if (!PenState.loaded) await loadPen(); return PenState.all; }
 
@@ -257,7 +257,7 @@ function penForm(id) {
       sel('hubungan_keluarga', 'Hubungan dalam keluarga', OPT.hubungan_keluarga) + sel('pendidikan', 'Pendidikan terakhir', OPT.pendidikan) + inp('pekerjaan', 'Pekerjaan') + inp('kewarganegaraan', 'Kewarganegaraan') +
       inp('nama_ayah', 'Nama ayah') + inp('nama_ibu', 'Nama ibu') +
       '</div><div class="sect">Alamat &amp; kontak</div><div class="form-grid">' +
-      inp('alamat', 'Alamat (jalan/nama tempat)', { full: 1 }) + inp('dusun', 'Dusun') + inp('no_rumah', 'No. rumah') + inp('rw', 'RW', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('rt', 'RT', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('no_hp', 'No HP', { attr: 'inputmode="tel"' }) +
+      inp('alamat', 'Alamat (jalan/nama tempat)', { full: 1 }) + inp('dusun', 'Dusun') + inp('no_rumah', 'No. rumah', AppState.noRumahOk === false ? { hint: 'Perhatian: server belum diperbarui, nomor rumah tidak akan tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.' } : {}) + inp('rw', 'RW', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('rt', 'RT', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('no_hp', 'No HP', { attr: 'inputmode="tel"' }) +
       sel('status_dasar', 'Status dasar', OPT.status_dasar, { ph: '' }) + '</div><div class="form-err" id="penErr" hidden></div></form>',
     footer: '<button class="btn btn-ghost" data-close>Batal</button><button class="btn btn-primary" id="penSave">Simpan</button>'
   });
@@ -273,6 +273,7 @@ function penForm(id) {
     await busy(e.currentTarget, 'Menyimpan…', async () => {
       const res = await api('pendudukSave', d);
       if (!res.success) { if (res.data && res.data.field) bad(res.data.field, res.message); else { const b = $('#penErr', m.el); b.textContent = res.message; b.hidden = false; } return; }
+      if (!('no_rumah' in res.data)) { AppState.noRumahOk = false; toast('Perhatian: server belum diperbarui, No. rumah tidak tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.', 'err'); }
       const i = PenState.all.findIndex(x => x.id === res.data.id);
       if (i > -1) PenState.all[i] = res.data; else PenState.all.unshift(res.data);
       PenState.loaded = true; persistPen(); toast(id ? 'Data penduduk diperbarui.' : 'Penduduk berhasil ditambahkan.'); m.close();
