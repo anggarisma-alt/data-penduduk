@@ -382,13 +382,22 @@ function kkDetail(no) {
   const badge = st => '<span class="badge ' + (st === 'Hidup' ? 'b-ok' : st === 'Meninggal' ? 'b-bad' : 'b-warn') + '">' + esc(st) + '</span>';
   const m = openModal({
     title: 'Kartu Keluarga', size: 'xl', noFocus: true,
-    body: '<div class="kv" style="margin-bottom:20px">' + kv('No KK', k.no) + kv('Kepala keluarga', h.nama) + kv('Alamat', h.alamat, true) + kv('No. rumah', k.rumah) + kv('Desil', k.desil) + kv('Didata Perlinsos', linText(k.lin)) + kv('Dusun', h.dusun) + kv('RT / RW', (h.rt || '-') + ' / ' + (h.rw || '-')) + kv('Jumlah anggota', k.anggota.length + ' orang (' + k.aktif + ' berstatus hidup)') + '</div>' +
+    body: '<div class="kv" style="margin-bottom:20px">' + kv('No KK', k.no) + kv('Kepala keluarga', h.nama) + kv('Alamat', h.alamat, true) + kv('No. rumah', k.rumah) + kv('Dusun', h.dusun) + kv('RT / RW', (h.rt || '-') + ' / ' + (h.rw || '-')) + kv('Jumlah anggota', k.anggota.length + ' orang (' + k.aktif + ' berstatus hidup)') + '</div>' +
+      '<div style="margin-bottom:20px;padding:16px 18px 6px;border-radius:14px;background:var(--b50);border:1px solid var(--b100)"><div class="sect" style="margin-top:0">Desil &amp; Perlinsos — isi sekali untuk seluruh KK</div><div class="form-grid"><div class="field"><label for="kkDesil">Desil</label><select class="select" id="kkDesil">' + opts(OPT.desil, k.desil, 'Belum diisi') + '</select></div><div class="field"><label for="kkLin">Sudah didata Perlinsos?</label><select class="select" id="kkLin">' + opts(OPT.perlinsos, k.lin, 'Belum diisi') + '</select></div></div><p class="hint" style="margin:-6px 0 12px">Berlaku untuk seluruh ' + k.anggota.length + ' anggota KK ini. Tidak perlu mengisi satu per satu.</p></div>' +
       '<div class="tbl-wrap" style="border:1px solid var(--line);border-radius:12px"><table class="tbl"><thead><tr><th>No</th><th>Nama</th><th class="hide-sm">NIK</th><th>Hubungan</th><th class="hide-md">JK</th><th class="hide-md">Tempat, tgl lahir</th><th>Status</th></tr></thead><tbody>' +
       k.anggota.map((a, i) => '<tr class="click" data-id="' + esc(a.id) + '"><td>' + (i + 1) + '</td><td class="cell-main"><b>' + esc(a.nama) + '</b><small>' + esc(a.pekerjaan || '') + '</small></td><td class="mono hide-sm">' + esc(a.nik) + '</td><td>' + esc(a.hubungan_keluarga || '-') + '</td><td class="hide-md">' + esc(a.jk) + '</td>' +
         '<td class="hide-md">' + esc((a.tempat_lahir ? a.tempat_lahir + ', ' : '') + tglID(a.tgl_lahir)) + '</td><td>' + badge(a.status_dasar) + '</td></tr>').join('') + '</tbody></table></div><p class="hint" style="margin-top:10px">Klik anggota untuk melihat data lengkap atau membuat surat.</p>',
-    footer: '<button class="btn btn-ghost" data-close>Tutup</button>'
+    footer: '<button class="btn btn-ghost" data-close>Tutup</button><button class="btn btn-primary" id="kkSosSave">' + ic('check') + ' Simpan Desil &amp; Perlinsos</button>'
   });
   m.body.addEventListener('click', e => { const tr = e.target.closest('tr.click'); if (tr) penDetail(tr.dataset.id); });
+  $('#kkSosSave', m.el).addEventListener('click', async () => {
+    await busy($('#kkSosSave', m.el), 'Menyimpan…', async () => {
+      const r = await api('keluargaSos', { no_kk: k.no, desil: $('#kkDesil', m.el).value, perlinsos: $('#kkLin', m.el).value });
+      if (!r.success) return toast(/Aksi tidak dikenal/.test(r.message || '') ? 'Server belum diperbarui. Tempel Kode.gs terbaru lalu Deploy → New version.' : r.message, 'err');
+      PenState.all.forEach(p => { if (p.no_kk === k.no) { p.desil = r.data.desil; p.perlinsos = r.data.perlinsos; } });
+      persistPen(); refreshPenViews(); m.close(); toast('Desil & Perlinsos disimpan untuk ' + r.data.ids.length + ' anggota KK.');
+    });
+  });
 }
 
 /* ============================================================
