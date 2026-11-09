@@ -23,7 +23,9 @@ const OPT = {
   status_kawin: ['Belum Kawin', 'Kawin', 'Kawin Tercatat', 'Kawin Belum Tercatat', 'Cerai Hidup', 'Cerai Mati', 'Cerai Belum Tercatat'],
   hubungan_keluarga: ['Kepala Keluarga', 'Istri', 'Anak', 'Menantu', 'Cucu', 'Orang Tua', 'Mertua', 'Famili Lain', 'Lainnya'],
   pendidikan: ['Tidak/Belum Sekolah', 'Belum Tamat SD', 'Tamat SD', 'SLTP/Sederajat', 'SLTA/Sederajat', 'Diploma I/II', 'Akademi/Diploma III', 'Diploma IV/Strata I', 'Strata II', 'Strata III'],
-  status_dasar: ['Hidup', 'Meninggal', 'Pindah']
+  status_dasar: ['Hidup', 'Meninggal', 'Pindah'],
+  desil: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+  perlinsos: ['Sudah', 'Belum']
 };
 const PENANDA = ['nama', 'nik', 'no_kk', 'no_rumah', 'ttl', 'tempat_lahir', 'tgl_lahir', 'umur', 'jk', 'agama', 'status_kawin', 'pendidikan', 'pekerjaan', 'alamat_lengkap', 'alamat', 'dusun', 'rt', 'rw', 'nama_ayah', 'nama_ibu', 'kewarganegaraan', 'keperluan', 'nomor_surat', 'tanggal_surat', 'nama_desa', 'kecamatan', 'kabupaten', 'penandatangan', 'jabatan_penandatangan'];
 
@@ -90,7 +92,7 @@ function prefetch() {
 function akunModal() {
   const m = openModal({
     title: 'Akun saya', size: 'sm',
-    body: '<div class="kv" style="margin-bottom:20px"><div><small>Nama</small><b>' + esc(me().nama) + '</b></div><div><small>Peran</small><b>' + esc(PERAN[me().peran]) + '</b></div><div class="full"><small>Username</small><b>' + esc(me().username) + '</b></div></div>' +
+    body: '<div class="kv" style="margin-bottom:20px"><div><small>Nama</small><b>' + esc(me().nama) + '</b></div><div><small>Peran</small><b>' + esc(PERAN[me().peran]) + '</b></div><div class="full"><small>Username</small><b>' + esc(me().username) + '</b></div><div class="full"><small>Versi server</small><b>' + esc((AppState.boot && AppState.boot.versi) || 'LAMA — belum diperbarui (deploy ulang Kode.gs)') + '</b></div></div>' +
       '<form id="fPw"><div class="sect">Ganti password</div>' +
       '<div class="field"><label>Password lama</label><input class="input" name="lama" type="password" autocomplete="current-password" required></div>' +
       '<div class="field"><label>Password baru</label><input class="input" name="baru" type="password" autocomplete="new-password" minlength="6" required><div class="hint">Minimal 6 karakter.</div></div>' +
@@ -167,15 +169,15 @@ function stat(icon, cls, val, label) { return '<div class="stat"><div class="si 
 /* ============================================================
    DATA PENDUDUK
    ============================================================ */
-const PenState = { all: [], loaded: false, q: '', dusun: '', rw: '', rt: '', status: '', kk: '', urut: 'rumah', page: 1, size: 25 };
+const PenState = { all: [], loaded: false, q: '', dusun: '', rw: '', rt: '', status: '', kk: '', urut: 'rumah', desil: '', lin: '', page: 1, size: 25 };
 function unpackPen(p) { return p.rows.map(r => { const o = {}; p.cols.forEach((c, i) => { o[c] = r[i]; }); return o; }); }
 function packPen() {
-  const cols = ['id', 'nik', 'no_kk', 'nama', 'tempat_lahir', 'tgl_lahir', 'jk', 'gol_darah', 'agama', 'status_kawin', 'hubungan_keluarga', 'pendidikan', 'pekerjaan', 'alamat', 'dusun', 'rw', 'rt', 'nama_ayah', 'nama_ibu', 'kewarganegaraan', 'no_hp', 'status_dasar', 'created_at', 'updated_at', 'no_rumah'];
+  const cols = ['id', 'nik', 'no_kk', 'nama', 'tempat_lahir', 'tgl_lahir', 'jk', 'gol_darah', 'agama', 'status_kawin', 'hubungan_keluarga', 'pendidikan', 'pekerjaan', 'alamat', 'dusun', 'rw', 'rt', 'nama_ayah', 'nama_ibu', 'kewarganegaraan', 'no_hp', 'status_dasar', 'created_at', 'updated_at', 'no_rumah', 'desil', 'perlinsos'];
   return { cols, rows: PenState.all.map(o => cols.map(c => o[c] || '')) };
 }
 function persistPen() { const d = packPen(); Store.set(userKey('pen'), { t: Date.now(), h: hashStr(JSON.stringify(d)), data: d }); Store.del(userKey('dash')); }
 function loadPen(force) {
-  return swr('pen', 'pendudukList', {}, d => { PenState.all = unpackPen(d); PenState.loaded = true; AppState.noRumahOk = d.cols.indexOf('no_rumah') >= 0; refreshPenViews(); }, { force, fresh: 120000, onError: r => { const el = $('.page[data-page="penduduk"]'); if (el) $('#pBody', el).innerHTML = errorState(r, 'pRetry'); const b = $('#pRetry'); b && b.addEventListener('click', () => loadPen(true)); } });
+  return swr('pen', 'pendudukList', {}, d => { PenState.all = unpackPen(d); PenState.loaded = true; AppState.noRumahOk = d.cols.indexOf('perlinsos') >= 0 && d.cols.indexOf('no_rumah') >= 0; refreshPenViews(); }, { force, fresh: 120000, onError: r => { const el = $('.page[data-page="penduduk"]'); if (el) $('#pBody', el).innerHTML = errorState(r, 'pRetry'); const b = $('#pRetry'); b && b.addEventListener('click', () => loadPen(true)); } });
 }
 async function ensurePen() { if (!PenState.loaded) await loadPen(); return PenState.all; }
 
@@ -184,12 +186,12 @@ Pages.penduduk = {
   template: () => '<div class="page-h"><div><h2>Data Penduduk</h2><p>Buku induk penduduk Desa Lamongan.</p></div><div class="chips"><button class="btn btn-primary" id="pAdd">' + ic('plus') + ' Tambah penduduk</button></div></div>' +
     '<div class="card flush"><div class="toolbar"><div class="search">' + ic('search') + '<input class="input" id="pQ" placeholder="Cari NIK, nama, No KK, atau No. rumah…" aria-label="Cari penduduk"></div>' +
     '<select class="select" id="pDusun" aria-label="Dusun"></select><select class="select" id="pRw" aria-label="RW"></select><select class="select" id="pRt" aria-label="RT"></select>' +
-    '<select class="select" id="pSt" aria-label="Status"><option value="">Semua status</option><option>Hidup</option><option>Meninggal</option><option>Pindah</option></select><select class="select" id="pKk" aria-label="No KK"></select><select class="select" id="pUrut" aria-label="Urutkan"><option value="rumah">Urut: No. rumah</option><option value="wilayah">Urut: Dusun · RT · No. rumah</option><option value="nama">Urut: Nama</option><option value="nik">Urut: NIK</option><option value="baru">Urut: Terbaru</option></select></div>' +
+    '<select class="select" id="pSt" aria-label="Status"><option value="">Semua status</option><option>Hidup</option><option>Meninggal</option><option>Pindah</option></select><select class="select" id="pKk" aria-label="No KK"></select><select class="select" id="pDesil" aria-label="Desil"></select><select class="select" id="pLin" aria-label="Perlinsos"></select><select class="select" id="pUrut" aria-label="Urutkan"><option value="rumah">Urut: No. rumah</option><option value="wilayah">Urut: Dusun · RT · No. rumah</option><option value="nama">Urut: Nama</option><option value="nik">Urut: NIK</option><option value="baru">Urut: Terbaru</option></select></div>' +
     '<div id="pBody">' + '<div style="padding:18px">' + skeleton(6) + '</div></div></div>',
   init(el) {
     const re = () => { PenState.page = 1; this.draw(el); };
     $('#pQ', el).addEventListener('input', debounce(e => { PenState.q = e.target.value.trim().toLowerCase(); re(); }, 250));
-    [['pDusun', 'dusun'], ['pRw', 'rw'], ['pRt', 'rt'], ['pSt', 'status'], ['pKk', 'kk'], ['pUrut', 'urut']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { PenState[k] = e.target.value; re(); }));
+    [['pDusun', 'dusun'], ['pRw', 'rw'], ['pRt', 'rt'], ['pSt', 'status'], ['pKk', 'kk'], ['pDesil', 'desil'], ['pLin', 'lin'], ['pUrut', 'urut']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { PenState[k] = e.target.value; re(); }));
     $('#pAdd', el).addEventListener('click', () => penForm());
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (b) { const id = b.dataset.id; ({ view: () => penDetail(id), edit: () => penForm(id), del: () => penHapus(id), prev: () => { PenState.page--; this.draw(el); }, next: () => { PenState.page++; this.draw(el); } })[b.dataset.act](); return; }
@@ -204,11 +206,12 @@ Pages.penduduk = {
     $('#pSt', el).value = PenState.status;
     const tanpa = PenState.all.filter(p => !p.no_kk).length;
     $('#pKk', el).innerHTML = '<option value="">Semua No KK</option><option value="belum">Belum punya No KK (' + nf(tanpa) + ')</option><option value="sudah">Sudah punya No KK</option>'; $('#pKk', el).value = PenState.kk; $('#pUrut', el).value = PenState.urut;
+    $('#pDesil', el).innerHTML = desilOpts(); $('#pDesil', el).value = PenState.desil; $('#pLin', el).innerHTML = linOpts(); $('#pLin', el).value = PenState.lin;
   },
   filtered() {
     const s = PenState, q = s.q;
     return s.all.filter(p => (!q || p.nik.includes(q) || (p.no_kk || '').includes(q) || p.nama.toLowerCase().includes(q) || (p.no_rumah || '').toLowerCase() === q) &&
-      (!s.dusun || p.dusun === s.dusun) && (!s.rw || p.rw === s.rw) && (!s.rt || p.rt === s.rt) && (!s.status || p.status_dasar === s.status) && (!s.kk || (s.kk === 'belum' ? !p.no_kk : !!p.no_kk)));
+      (!s.dusun || p.dusun === s.dusun) && (!s.rw || p.rw === s.rw) && (!s.rt || p.rt === s.rt) && (!s.status || p.status_dasar === s.status) && (!s.kk || (s.kk === 'belum' ? !p.no_kk : !!p.no_kk)) && cocokSos(p.desil, p.perlinsos, s));
   },
   draw(el) {
     this.fill(el);
@@ -218,9 +221,9 @@ Pages.penduduk = {
     if (!s.all.length) { body.innerHTML = emptyState('users', 'Belum ada data penduduk', 'Mulai dengan menambahkan penduduk pertama.'); return; }
     if (!list.length) { body.innerHTML = emptyState('search', 'Tidak ada hasil', 'Coba ubah kata kunci atau filter.'); return; }
     const badge = st => '<span class="badge ' + (st === 'Hidup' ? 'b-ok' : st === 'Meninggal' ? 'b-bad' : 'b-warn') + '">' + esc(st) + '</span>';
-    body.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>NIK</th><th>Nama</th><th class="hide-md">No KK</th><th class="hide-sm">No. rumah</th><th class="hide-sm">Dusun · RT/RW</th><th>Status</th><th></th></tr></thead><tbody>' +
+    body.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>NIK</th><th>Nama</th><th class="hide-md">No KK</th><th class="hide-sm">No. rumah</th><th class="hide-sm">Dusun · RT/RW</th><th class="hide-md">Desil</th><th class="hide-md">Perlinsos</th><th>Status</th><th></th></tr></thead><tbody>' +
       rows.map(p => '<tr class="click" data-id="' + esc(p.id) + '"><td class="mono">' + esc(p.nik) + '</td><td class="cell-main"><b>' + esc(p.nama) + '</b><small>' + esc(p.jk) + ' · ' + umur(p.tgl_lahir) + '</small></td><td class="mono hide-md">' + esc(p.no_kk || '-') + '</td>' +
-        '<td class="hide-sm">' + esc(p.no_rumah || '-') + '</td><td class="hide-sm">' + esc(p.dusun || '-') + ' · ' + esc(p.rt || '-') + '/' + esc(p.rw || '-') + '</td><td>' + badge(p.status_dasar) + '</td>' +
+        '<td class="hide-sm">' + esc(p.no_rumah || '-') + '</td><td class="hide-sm">' + esc(p.dusun || '-') + ' · ' + esc(p.rt || '-') + '/' + esc(p.rw || '-') + '</td><td class="hide-md">' + esc(p.desil || '-') + '</td><td class="hide-md">' + linBadge(p.perlinsos) + '</td><td>' + badge(p.status_dasar) + '</td>' +
         '<td class="act"><button class="icon-btn sm" data-act="edit" data-id="' + esc(p.id) + '" aria-label="Ubah ' + esc(p.nama) + '" title="Ubah">' + ic('pencil') + '</button>' +
         (del ? '<button class="icon-btn sm danger" data-act="del" data-id="' + esc(p.id) + '" aria-label="Hapus ' + esc(p.nama) + '" title="Hapus">' + ic('trash') + '</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>' +
       '<div class="pager"><span>' + nf((s.page - 1) * s.size + 1) + '–' + nf(Math.min(s.page * s.size, list.length)) + ' dari ' + nf(list.length) + ' penduduk</span><div>' +
@@ -235,7 +238,7 @@ function penDetail(id) {
     title: p.nama, size: 'lg',
     body: '<div class="kv">' + k('NIK', p.nik) + k('No KK', p.no_kk) + k('Tempat, tanggal lahir', (p.tempat_lahir ? p.tempat_lahir + ', ' : '') + tglID(p.tgl_lahir) + (umur(p.tgl_lahir) ? ' (' + umur(p.tgl_lahir) + ')' : '')) + k('Jenis kelamin', p.jk) +
       k('Golongan darah', p.gol_darah) + k('Agama', p.agama) + k('Status kawin', p.status_kawin) + k('Hubungan dalam keluarga', p.hubungan_keluarga) + k('Pendidikan', p.pendidikan) + k('Pekerjaan', p.pekerjaan) +
-      k('Alamat', [p.alamat, p.no_rumah && 'No. ' + p.no_rumah, 'Dusun ' + (p.dusun || '-'), 'RT ' + (p.rt || '-') + '/RW ' + (p.rw || '-')].filter(Boolean).join(', '), true) + k('No. rumah', p.no_rumah) + k('Nama ayah', p.nama_ayah) + k('Nama ibu', p.nama_ibu) + k('Kewarganegaraan', p.kewarganegaraan) + k('No HP', p.no_hp) + k('Status dasar', p.status_dasar) + k('Terakhir diubah', tglID(p.updated_at)) + '</div>',
+      k('Alamat', [p.alamat, p.no_rumah && 'No. ' + p.no_rumah, 'Dusun ' + (p.dusun || '-'), 'RT ' + (p.rt || '-') + '/RW ' + (p.rw || '-')].filter(Boolean).join(', '), true) + k('No. rumah', p.no_rumah) + k('Desil', p.desil) + k('Didata Perlinsos', linText(p.perlinsos)) + k('Nama ayah', p.nama_ayah) + k('Nama ibu', p.nama_ibu) + k('Kewarganegaraan', p.kewarganegaraan) + k('No HP', p.no_hp) + k('Status dasar', p.status_dasar) + k('Terakhir diubah', tglID(p.updated_at)) + '</div>',
     footer: '<button class="btn btn-ghost" data-close>Tutup</button><button class="btn btn-soft" data-e>' + ic('pencil') + ' Ubah data</button><button class="btn btn-primary" data-s>' + ic('file') + ' Buat surat</button>'
   });
   $('[data-e]', m.el).addEventListener('click', () => { m.close(); penForm(id); });
@@ -257,8 +260,8 @@ function penForm(id) {
       sel('hubungan_keluarga', 'Hubungan dalam keluarga', OPT.hubungan_keluarga) + sel('pendidikan', 'Pendidikan terakhir', OPT.pendidikan) + inp('pekerjaan', 'Pekerjaan') + inp('kewarganegaraan', 'Kewarganegaraan') +
       inp('nama_ayah', 'Nama ayah') + inp('nama_ibu', 'Nama ibu') +
       '</div><div class="sect">Alamat &amp; kontak</div><div class="form-grid">' +
-      inp('alamat', 'Alamat (jalan/nama tempat)', { full: 1 }) + inp('dusun', 'Dusun') + inp('no_rumah', 'No. rumah', AppState.noRumahOk === false ? { hint: 'Perhatian: server belum diperbarui, nomor rumah tidak akan tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.' } : {}) + inp('rw', 'RW', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('rt', 'RT', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('no_hp', 'No HP', { attr: 'inputmode="tel"' }) +
-      sel('status_dasar', 'Status dasar', OPT.status_dasar, { ph: '' }) + '</div><div class="form-err" id="penErr" hidden></div></form>',
+      inp('alamat', 'Alamat (jalan/nama tempat)', { full: 1 }) + inp('dusun', 'Dusun') + inp('no_rumah', 'No. rumah', AppState.noRumahOk === false ? { hint: 'Perhatian: server belum diperbarui, No. rumah, desil, dan Perlinsos tidak akan tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.' } : {}) + inp('rw', 'RW', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('rt', 'RT', { attr: 'inputmode="numeric" maxlength="3"' }) + inp('no_hp', 'No HP', { attr: 'inputmode="tel"' }) +
+      sel('status_dasar', 'Status dasar', OPT.status_dasar, { ph: '' }) + '</div><div class="sect">Data sosial</div><div class="form-grid">' + sel('desil', 'Desil', OPT.desil, { ph: 'Belum diisi' }) + sel('perlinsos', 'Sudah didata Perlinsos?', OPT.perlinsos, { ph: 'Belum diisi' }) + '<div class="hint full" style="margin:-6px 0 12px">Desil dan status Perlinsos berlaku untuk seluruh anggota dalam satu KK — saat disimpan, anggota KK yang sama otomatis disamakan.</div></div><div class="form-err" id="penErr" hidden></div></form>',
     footer: '<button class="btn btn-ghost" data-close>Batal</button><button class="btn btn-primary" id="penSave">Simpan</button>'
   });
   $('#penSave', m.el).addEventListener('click', async e => {
@@ -273,7 +276,7 @@ function penForm(id) {
     await busy(e.currentTarget, 'Menyimpan…', async () => {
       const res = await api('pendudukSave', d);
       if (!res.success) { if (res.data && res.data.field) bad(res.data.field, res.message); else { const b = $('#penErr', m.el); b.textContent = res.message; b.hidden = false; } return; }
-      if (!('no_rumah' in res.data)) { AppState.noRumahOk = false; toast('Perhatian: server belum diperbarui, No. rumah tidak tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.', 'err'); }
+      if (!('perlinsos' in res.data)) { AppState.noRumahOk = false; toast('Perhatian: server belum diperbarui, No. rumah, desil, dan Perlinsos tidak tersimpan. Tempel Kode.gs terbaru lalu Deploy → New version.', 'err'); }
       const i = PenState.all.findIndex(x => x.id === res.data.id);
       if (i > -1) PenState.all[i] = res.data; else PenState.all.unshift(res.data);
       PenState.loaded = true; persistPen(); toast(id ? 'Data penduduk diperbarui.' : 'Penduduk berhasil ditambahkan.'); m.close();
@@ -293,7 +296,12 @@ async function penHapus(id) {
 /* ============================================================
    KARTU KELUARGA — tampilan keluarga dikelompokkan dari No KK
    ============================================================ */
-const KkState = { q: '', dusun: '', rw: '', rt: '', page: 1, size: 20 };
+const KkState = { q: '', dusun: '', rw: '', rt: '', desil: '', lin: '', page: 1, size: 20 };
+const linText = v => v === 'Sudah' ? 'Sudah didata' : v === 'Belum' ? 'Belum didata' : '-';
+const linBadge = v => v === 'Sudah' ? '<span class="badge b-ok">Sudah didata</span>' : v === 'Belum' ? '<span class="badge b-warn">Belum didata</span>' : '<span class="muted">-</span>';
+const desilOpts = () => '<option value="">Semua desil</option>' + OPT.desil.map(d => '<option value="' + d + '">Desil ' + d + '</option>').join('') + '<option value="-">Belum diisi</option>';
+const linOpts = () => '<option value="">Semua Perlinsos</option><option value="Sudah">Sudah didata</option><option value="Belum">Belum didata</option><option value="-">Belum diisi</option>';
+const cocokSos = (desil, lin, f) => (!f.desil || (f.desil === '-' ? !desil : desil === f.desil)) && (!f.lin || (f.lin === '-' ? !lin : lin === f.lin));
 const natCmp = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { numeric: true });
 const blankLast = (a, b) => (a ? 0 : 1) - (b ? 0 : 1);
 /** Urut: No. rumah (angka alami: 2 < 10 < 12A) → No KK → hubungan (kepala, istri, anak…) → tanggal lahir → nama. Yang kosong di akhir. */
@@ -328,7 +336,7 @@ function groupKK() {
   const list = Object.keys(m).map(no => {
     const a = m[no].slice().sort((x, y) => rank(x) - rank(y) || String(x.tgl_lahir).localeCompare(String(y.tgl_lahir)));
     const kepala = a.find(x => /kepala/i.test(x.hubungan_keluarga)) || a[0];
-    return { no, anggota: a, kepala, aktif: a.filter(x => x.status_dasar === 'Hidup').length, rumah: kepala.no_rumah || ((a.find(x => x.no_rumah) || {}).no_rumah) || '' };
+    return { no, anggota: a, kepala, aktif: a.filter(x => x.status_dasar === 'Hidup').length, rumah: kepala.no_rumah || ((a.find(x => x.no_rumah) || {}).no_rumah) || '', desil: kepala.desil || ((a.find(x => x.desil) || {}).desil) || '', lin: kepala.perlinsos || ((a.find(x => x.perlinsos) || {}).perlinsos) || '' };
   }).sort((x, y) => cmpRumah(Object.assign({}, x.kepala, { no_rumah: x.rumah }), Object.assign({}, y.kepala, { no_rumah: y.rumah })));
   return { list, tanpa };
 }
@@ -337,11 +345,11 @@ Pages.kk = {
   title: 'Kartu Keluarga', min: 1,
   template: () => '<div class="page-h"><div><h2>Kartu Keluarga</h2><p>Keluarga dikelompokkan berdasarkan nomor KK.</p></div></div>' +
     '<div class="card flush"><div class="toolbar"><div class="search">' + ic('search') + '<input class="input" id="kQ" placeholder="Cari No KK, No. rumah, nama kepala keluarga, atau anggota…" aria-label="Cari keluarga"></div>' +
-    '<select class="select" id="kDusun" aria-label="Dusun"></select><select class="select" id="kRw" aria-label="RW"></select><select class="select" id="kRt" aria-label="RT"></select></div><div id="kBody"><div style="padding:18px">' + skeleton(6) + '</div></div></div>',
+    '<select class="select" id="kDusun" aria-label="Dusun"></select><select class="select" id="kRw" aria-label="RW"></select><select class="select" id="kRt" aria-label="RT"></select><select class="select" id="kDesil" aria-label="Desil"></select><select class="select" id="kLin" aria-label="Perlinsos"></select></div><div id="kBody"><div style="padding:18px">' + skeleton(6) + '</div></div></div>',
   init(el) {
     const re = () => { KkState.page = 1; this.draw(el); };
     $('#kQ', el).addEventListener('input', debounce(e => { KkState.q = e.target.value.trim().toLowerCase(); re(); }, 250));
-    [['kDusun', 'dusun'], ['kRw', 'rw'], ['kRt', 'rt']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { KkState[k] = e.target.value; re(); }));
+    [['kDusun', 'dusun'], ['kRw', 'rw'], ['kRt', 'rt'], ['kDesil', 'desil'], ['kLin', 'lin']].forEach(([id, k]) => $('#' + id, el).addEventListener('change', e => { KkState[k] = e.target.value; re(); }));
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (b) { KkState.page += b.dataset.act === 'next' ? 1 : -1; return this.draw(el); }
       const tr = e.target.closest('tr.click'); if (tr) kkDetail(tr.dataset.no);
@@ -353,15 +361,16 @@ Pages.kk = {
     const dusun = Array.from(new Set(list.map(k => k.kepala.dusun).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id'));
     const uq = k => Array.from(new Set(list.map(x => x.kepala[k]).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
     $('#kDusun', el).innerHTML = opts(dusun, s.dusun, 'Semua dusun'); $('#kRw', el).innerHTML = opts(uq('rw'), s.rw, 'Semua RW'); $('#kRt', el).innerHTML = opts(uq('rt'), s.rt, 'Semua RT');
-    const q = s.q, rows = list.filter(k => (!s.dusun || k.kepala.dusun === s.dusun) && (!s.rw || k.kepala.rw === s.rw) && (!s.rt || k.kepala.rt === s.rt) && (!q || k.no.includes(q) || (k.rumah || '').toLowerCase() === q || k.anggota.some(a => a.nama.toLowerCase().includes(q) || a.nik.includes(q))));
+    $('#kDesil', el).innerHTML = desilOpts(); $('#kDesil', el).value = s.desil; $('#kLin', el).innerHTML = linOpts(); $('#kLin', el).value = s.lin;
+    const q = s.q, rows = list.filter(k => (!s.dusun || k.kepala.dusun === s.dusun) && (!s.rw || k.kepala.rw === s.rw) && (!s.rt || k.kepala.rt === s.rt) && cocokSos(k.desil, k.lin, s) && (!q || k.no.includes(q) || (k.rumah || '').toLowerCase() === q || k.anggota.some(a => a.nama.toLowerCase().includes(q) || a.nik.includes(q))));
     const pages = Math.max(1, Math.ceil(rows.length / s.size)); s.page = Math.min(Math.max(1, s.page), pages);
     const note = tanpa ? '<div class="pager" style="border-bottom:1px solid var(--line)"><span>' + ic('alert') + ' ' + nf(tanpa) + ' penduduk belum memiliki No KK dan tidak tampil di sini.</span></div>' : '';
     if (!list.length) { body.innerHTML = note + emptyState('home', 'Belum ada data keluarga', 'Isi kolom No KK pada data penduduk agar keluarga terbentuk.'); return; }
     if (!rows.length) { body.innerHTML = note + emptyState('search', 'Tidak ada hasil', 'Coba ubah kata kunci atau filter.'); return; }
     const page = rows.slice((s.page - 1) * s.size, s.page * s.size);
-    body.innerHTML = note + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No KK</th><th>Kepala keluarga</th><th class="hide-sm">No. rumah</th><th class="hide-sm">Dusun · RT/RW</th><th>Anggota</th></tr></thead><tbody>' +
+    body.innerHTML = note + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No KK</th><th>Kepala keluarga</th><th class="hide-sm">No. rumah</th><th class="hide-sm">Dusun · RT/RW</th><th class="hide-md">Desil</th><th class="hide-md">Perlinsos</th><th>Anggota</th></tr></thead><tbody>' +
       page.map(k => '<tr class="click" data-no="' + esc(k.no) + '"><td class="mono">' + esc(k.no) + '</td><td class="cell-main"><b>' + esc(k.kepala.nama) + '</b><small class="hide-md">' + esc(k.kepala.alamat || '') + '</small></td>' +
-        '<td class="hide-sm">' + esc(k.rumah || '-') + '</td><td class="hide-sm">' + esc(k.kepala.dusun || '-') + ' · ' + esc(k.kepala.rt || '-') + '/' + esc(k.kepala.rw || '-') + '</td><td><span class="badge b-info">' + k.anggota.length + ' orang</span></td></tr>').join('') + '</tbody></table></div>' +
+        '<td class="hide-sm">' + esc(k.rumah || '-') + '</td><td class="hide-sm">' + esc(k.kepala.dusun || '-') + ' · ' + esc(k.kepala.rt || '-') + '/' + esc(k.kepala.rw || '-') + '</td><td class="hide-md">' + esc(k.desil || '-') + '</td><td class="hide-md">' + linBadge(k.lin) + '</td><td><span class="badge b-info">' + k.anggota.length + ' orang</span></td></tr>').join('') + '</tbody></table></div>' +
       '<div class="pager"><span>' + nf((s.page - 1) * s.size + 1) + '–' + nf(Math.min(s.page * s.size, rows.length)) + ' dari ' + nf(rows.length) + ' keluarga</span><div>' +
       '<button class="btn btn-ghost btn-sm" data-act="prev"' + (s.page <= 1 ? ' disabled' : '') + '>' + ic('chevL') + ' Sebelumnya</button><button class="btn btn-ghost btn-sm" data-act="next"' + (s.page >= pages ? ' disabled' : '') + '>Berikutnya ' + ic('chevR') + '</button></div></div>';
   }
@@ -373,7 +382,7 @@ function kkDetail(no) {
   const badge = st => '<span class="badge ' + (st === 'Hidup' ? 'b-ok' : st === 'Meninggal' ? 'b-bad' : 'b-warn') + '">' + esc(st) + '</span>';
   const m = openModal({
     title: 'Kartu Keluarga', size: 'xl', noFocus: true,
-    body: '<div class="kv" style="margin-bottom:20px">' + kv('No KK', k.no) + kv('Kepala keluarga', h.nama) + kv('Alamat', h.alamat, true) + kv('No. rumah', k.rumah) + kv('Dusun', h.dusun) + kv('RT / RW', (h.rt || '-') + ' / ' + (h.rw || '-')) + kv('Jumlah anggota', k.anggota.length + ' orang (' + k.aktif + ' berstatus hidup)') + '</div>' +
+    body: '<div class="kv" style="margin-bottom:20px">' + kv('No KK', k.no) + kv('Kepala keluarga', h.nama) + kv('Alamat', h.alamat, true) + kv('No. rumah', k.rumah) + kv('Desil', k.desil) + kv('Didata Perlinsos', linText(k.lin)) + kv('Dusun', h.dusun) + kv('RT / RW', (h.rt || '-') + ' / ' + (h.rw || '-')) + kv('Jumlah anggota', k.anggota.length + ' orang (' + k.aktif + ' berstatus hidup)') + '</div>' +
       '<div class="tbl-wrap" style="border:1px solid var(--line);border-radius:12px"><table class="tbl"><thead><tr><th>No</th><th>Nama</th><th class="hide-sm">NIK</th><th>Hubungan</th><th class="hide-md">JK</th><th class="hide-md">Tempat, tgl lahir</th><th>Status</th></tr></thead><tbody>' +
       k.anggota.map((a, i) => '<tr class="click" data-id="' + esc(a.id) + '"><td>' + (i + 1) + '</td><td class="cell-main"><b>' + esc(a.nama) + '</b><small>' + esc(a.pekerjaan || '') + '</small></td><td class="mono hide-sm">' + esc(a.nik) + '</td><td>' + esc(a.hubungan_keluarga || '-') + '</td><td class="hide-md">' + esc(a.jk) + '</td>' +
         '<td class="hide-md">' + esc((a.tempat_lahir ? a.tempat_lahir + ', ' : '') + tglID(a.tgl_lahir)) + '</td><td>' + badge(a.status_dasar) + '</td></tr>').join('') + '</tbody></table></div><p class="hint" style="margin-top:10px">Klik anggota untuk melihat data lengkap atau membuat surat.</p>',
@@ -747,15 +756,15 @@ function grpMaker(rows, colspan) {                       // baris judul per kelu
 const jkS = p => p.jk === 'Laki-laki' ? 'L' : p.jk === 'Perempuan' ? 'P' : '';
 function eksporExcel(rows) {
   const i = eksporInfo(rows), st = i.st, hari = hariIni();
-  const H = ['No', 'NIK', 'No KK', 'Nama Lengkap', 'L/P', 'Tempat Lahir', 'Tanggal Lahir', 'Umur', 'Gol. Darah', 'Agama', 'Status Kawin', 'Hubungan Keluarga', 'Pendidikan', 'Pekerjaan', 'Alamat', 'No Rumah', 'Dusun', 'RT', 'RW', 'Nama Ayah', 'Nama Ibu', 'Kewarganegaraan', 'No HP', 'Status'];
+  const H = ['No', 'NIK', 'No KK', 'Nama Lengkap', 'L/P', 'Tempat Lahir', 'Tanggal Lahir', 'Umur', 'Gol. Darah', 'Agama', 'Status Kawin', 'Hubungan Keluarga', 'Pendidikan', 'Pekerjaan', 'Alamat', 'No Rumah', 'Desil', 'Perlinsos', 'Dusun', 'RT', 'RW', 'Nama Ayah', 'Nama Ibu', 'Kewarganegaraan', 'No HP', 'Status'];
   const L = (v, s) => ({ v, s: s || 0 });
   const data = [[L('DATA PENDUDUK', 2)], [L('Desa ' + (st.nama_desa || '') + ', Kecamatan ' + (st.kecamatan || '') + ', Kabupaten ' + (st.kabupaten || ''), 4)],
     [L('Per ' + tglID(hari) + ' · ' + i.filter + ' · diurutkan berdasarkan ' + URUT_LABEL[EkspState.urut])],
     [L('Jumlah: ' + nf(rows.length) + ' orang (laki-laki ' + nf(i.l) + ', perempuan ' + nf(i.p) + ')')], [], H.map(h => L(h, 1))]
     .concat(rows.map((p, n) => [n + 1, p.nik, p.no_kk, p.nama, jkS(p), p.tempat_lahir, normIso(p.tgl_lahir).split('-').reverse().join('-'), umurPada(p.tgl_lahir, hari), p.gol_darah, p.agama, p.status_kawin, p.hubungan_keluarga,
-      p.pendidikan, p.pekerjaan, p.alamat, p.no_rumah, p.dusun, p.rt, p.rw, p.nama_ayah, p.nama_ibu, p.kewarganegaraan, p.no_hp, p.status_dasar].map(v => L(typeof v === 'number' ? v : (v || ''), 3))));
-  return XLSX_MINI.make({ sheet: 'Data Penduduk', rows: data, freeze: 6, merges: ['A1:X1', 'A2:X2', 'A3:X3', 'A4:X4'],
-    widths: [6, 20, 20, 30, 6, 18, 14, 7, 10, 12, 16, 18, 22, 20, 34, 10, 16, 6, 6, 24, 24, 14, 16, 12] });
+      p.pendidikan, p.pekerjaan, p.alamat, p.no_rumah, p.desil, linText(p.perlinsos), p.dusun, p.rt, p.rw, p.nama_ayah, p.nama_ibu, p.kewarganegaraan, p.no_hp, p.status_dasar].map(v => L(typeof v === 'number' ? v : (v || ''), 3))));
+  return XLSX_MINI.make({ sheet: 'Data Penduduk', rows: data, freeze: 6, merges: ['A1:Z1', 'A2:Z2', 'A3:Z3', 'A4:Z4'],
+    widths: [6, 20, 20, 30, 6, 18, 14, 7, 10, 12, 16, 18, 22, 20, 34, 10, 8, 14, 16, 6, 6, 24, 24, 14, 16, 12] });
 }
 function eksporHtml(rows) {
   const i = eksporInfo(rows), st = i.st, grp = grpMaker(rows, 10);
